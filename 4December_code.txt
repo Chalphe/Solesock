@@ -1,0 +1,71 @@
+#include <SoftwareSerial.h>
+SoftwareSerial HM10(2, 3); // RX = 2, TX = 3
+char appData;  
+String inData = "";
+char writedata[8] = "";
+int analogPin1 = A2; // pin for first sensor
+int analogPin2 = A1; // pin for second sensor
+int Vin=5 ; //starting voltage, assumed to be 5 here since it is an arduino
+float temp = 0;
+
+
+float Vout=0;
+float Vout1 = 0;
+float Vout2 = 0;
+float R1= 10000; //reference resistance 
+float R2= 0;
+float R3= 0;
+float buffer = 0;
+int rawNew= 0;
+int rawNew2 = 0;
+int rawNew3 = 0;
+int rawOld = 0;
+
+
+void setup()
+{
+  Serial.begin(9600);
+  Serial.println("HM10 serial started at 9600");
+  HM10.begin(9600); // set HM10 serial at 9600 baud rate
+  pinMode(13, OUTPUT); // onboard LED
+  digitalWrite(13, LOW); // switch OFF LED
+
+}
+
+void loop()
+{
+  HM10.listen();  // listen the HM10 port
+  if(HM10.available() > 0) {   // if HM10 sends something then read
+    appData = HM10.read();
+    inData = String(appData);  // save the data in string format
+    inData.replace("\n",""); //deelete the "enter" COUT function from the string by replacing it with empty space 
+    //Serial.println("in "+inData); //added space just to make it easier on the eyes :)
+    // Serial.write(appData); // Commented out this data since it is redundant. 
+    }
+ 
+  if (Serial.available()>0) {           // Read user input if available.
+    HM10.write(Serial.read()); 
+  }
+  
+  if ( inData == "N") {  //Use this function to read sensor 1 if there is only one sensor active
+    rawNew = analogRead(analogPin1); // read pin 1 here
+    buffer = rawNew*Vin;
+    Vout= (buffer)/1023.0;
+    buffer=(Vin/(Vin-Vout))-1;
+    R2=R1*buffer;
+    rawOld = rawNew;
+    //Create bit array to send data
+    temp = exp(4.229-0.00009999*R2);
+    Serial.print("Temp: ");
+    Serial.println(temp);
+    dtostrf(temp,3,2,writedata);
+    writedata[7]='C';
+    for (int i=0; i<sizeof(writedata); i++){
+      HM10.write(writedata[i]);
+    }
+    HM10.write("\n");
+    delay(500);
+  }
+
+  delay(500);;
+}
